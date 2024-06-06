@@ -1,4 +1,4 @@
-A containerised Node-JS for connecting to BitMEX's realtime API.  Allows frequent updates without being ratelimited.
+A containerised Node-JS server that connects to BitMEX's realtime API.  Allows frequent polling without being ratelimited.
 
 Built from https://github.com/BitMEX/api-connectors/tree/master/official-ws/delta-server
 
