@@ -2,7 +2,7 @@
 
 A work in progress...
 
-## bitmex_streamer
+## bitmex_streamer/
 
 A containerised Node.js app for connecting to BitMEX's realtime API.  Allows for frequent polling without being ratelimited.
 
@@ -14,7 +14,7 @@ Built from https://github.com/BitMEX/api-connectors/tree/master/official-ws/delt
 
 `curl "http://localhost:4444/instrument?symbol=XBTUSD"`
 
-## trading_algo
+## trading_algo.py
 
 A long and short breakout-based strategy with trailing stops.
 
