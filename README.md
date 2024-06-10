@@ -2,9 +2,9 @@
 
 A work in progress...
 
-## bitmex_streamer/
+### bitmex_streamer/
 
-A containerised Node.js app for connecting to BitMEX's realtime API.  Allows for frequent polling without being ratelimited.
+A containerised Node.js app for connecting to BitMEX's realtime API.  Allows for frequent updates without being ratelimited.
 
 Built from https://github.com/BitMEX/api-connectors/tree/master/official-ws/delta-server
 
@@ -14,10 +14,15 @@ Built from https://github.com/BitMEX/api-connectors/tree/master/official-ws/delt
 
 `curl "http://localhost:4444/instrument?symbol=XBTUSD"`
 
-## trading_algo.py
+### calculate_levels_public.py
 
-A long and short breakout-based strategy with trailing stops.
+Downloads historic price data and calculates significant price levels.  Redacted version.
 
-## to do...
+### make_trades.py
 
-Risk management() - auto-adjust bid sizes to reduce the degree of variance in returns and losses. 
+An automated long & short trading strategy based on significant levels and trailing stops.
+
+### To do...
+
+Risk management - auto-adjust bid sizes to reduce the degree of variance in returns and losses. 
+Send market orders using bitmex client()

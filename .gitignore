@@ -4,4 +4,5 @@ build/
 dist/
 *.pyc
 npm-debug.log
-trading_algo_private.py
+calculate_levels_private.py
+swagger_client.py
