@@ -4,5 +4,8 @@ build/
 dist/
 *.pyc
 npm-debug.log
-calculate_levels_private.py
+*calculate_levels_private.py
 swagger_client.py
+.env
+.venv
+__pycache__
