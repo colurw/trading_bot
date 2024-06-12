@@ -1,0 +1,37 @@
+# https://docs.docker.com/compose/compose-file/compose-file-v3/
+# https://devhints.io/docker-compose
+
+services:
+  
+  bitmex_streamer:
+    build:
+      context: .
+      dockerfile: bitmex_streamer/Dockerfile
+    # expose:
+    #   - 4444:4444
+    networks:
+      - my_net
+    restart: always
+
+  trading_algorithm:
+    build:
+      context: .
+      dockerfile: trading_algorithm/Dockerfile
+    # ports:
+    #   - 80:80
+    depends_on:
+      - bitmex_streamer
+    networks:
+      - my_net
+    volumes:
+      - persisted_data:services/persisted_data
+    restart: always
+ 
+networks:
+  my_net:
+    driver: bridge
+
+volumes:
+  persisted_data:
+
+

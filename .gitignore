@@ -9,3 +9,4 @@ swagger_client.py
 .env
 .venv
 __pycache__
+market_commands.py
