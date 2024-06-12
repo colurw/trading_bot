@@ -22,7 +22,3 @@ Downloads historic price data and calculates significant price levels.  Redacted
 
 An automated long & short trading strategy based on significant levels and trailing stops.
 
-### To do...
-
-Risk management - auto-adjust bid sizes to reduce the degree of variance in returns and losses. 
-Send market orders using bitmex client()

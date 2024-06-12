@@ -24,7 +24,7 @@ services:
     networks:
       - my_net
     volumes:
-      - persisted_data:services/persisted_data
+      - persisted_data:services/persisted
     restart: always
  
 networks:
