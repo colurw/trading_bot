@@ -10,3 +10,11 @@ swagger_client.py
 .venv
 __pycache__
 market_commands.py
+voice_alert.py
+*make_trades_private.py
+*graph.png
+test.py
+test2.py
+risk_manage.py
+audio.mp3
+first_figure.html
