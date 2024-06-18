@@ -36,7 +36,7 @@ class Indicator():
         """ get 1hr bucketed historic OHLC prices from API and return as a dataframe """
 
         attempts = 0
-        while attempts <= 3:
+        while True:
             
             try:
                 response = requests.get(f'https://www.bitmex.com/api/v1/trade/bucketed?binSize={buckets}&partial=false&symbol=XBTUSD&count={data_length}&reverse=true').json()

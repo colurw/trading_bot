@@ -76,7 +76,7 @@ def clear_book(client):
         print('no open stops')
 
 
-def message(string, speech=True):
+def message(string, speech=True, telegram=True):
     """ logs and vocalises messages  """
     time = strftime("%Y-%m-%d %H:%M:%S", localtime())  # also gmtime()
 
@@ -89,6 +89,8 @@ def message(string, speech=True):
         engine.setProperty('voice', voices[0].id) 
         engine.say(string)
         engine.runAndWait()
+
+    if tele
     
 
 def get_trade_status(client):

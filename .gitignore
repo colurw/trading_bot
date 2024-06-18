@@ -24,3 +24,4 @@ calculate_levels_private_OLD.py
 make_trades_OLD.py
 indicator_private.py
 resample.py
+telegram.py
