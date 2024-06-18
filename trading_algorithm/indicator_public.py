@@ -34,19 +34,23 @@ class Indicator():
 
     def get_historic_data(self, data_length, buckets='1h', resampled_buckets=False):
         """ get 1hr bucketed historic OHLC prices from API and return as a dataframe """
+<<<<<<< HEAD
 
         attempts = 0
         while True:
             
+=======
+        
+        for attempts in range(1,3):
+>>>>>>> 8f346e2fecedf7798bc42c85a1a024d49c166181
             try:
                 response = requests.get(f'https://www.bitmex.com/api/v1/trade/bucketed?binSize={buckets}&partial=false&symbol=XBTUSD&count={data_length}&reverse=true').json()
                 print('history received')
                 break
 
             except:
-                attempts += 1
                 time.sleep(5)
-                if attempts > 3:
+                if attempts == 3:
                     sys.exit('get_historic_data failed')
 
         df = pd.DataFrame.from_dict(response)
