@@ -10,9 +10,9 @@ Built from https://github.com/BitMEX/api-connectors/tree/master/official-ws/delt
 
 ### indicator_public.py
 
-Downloads recent historic price data and calculates the boundaries that will trigger trade entries and exits.  Redacted version.
+Analyses recent price data and determines the boundaries that will trigger market entries and exits.  Redacted version.
 
 ### make_trades.py
 
-Watches the realtime price and enacts a risk-adjusted trading strategy by making API calls to the market.
+Watches the realtime price stream and enacts a risk-adjusted trailing-stopped strategy with API calls to the market.
 

@@ -53,7 +53,7 @@ def calculate_order_size(margin, max_risk, price, stop_level):
     rounded = round(order_size / 100) * 100 
     leverage = max(rounded, 100) / capital
 
-    message(f'risk level - stop_frac:{stop_fraction} usd:{capital} mar:{margin/100000000} lev:{leverage}')
+    message(f'stop_fraction:{round(stop_fraction, 3)} leverage:{round(leverage, 3)}')
 
     return max(rounded, 100)
 
@@ -71,24 +71,24 @@ def clear_book(client):
         print('no open stops')
 
 
-def message(string, speech=False, telegram=True):
-    """ logs and vocalises messages  """
+def message(string, telegram=True, speech=False):
+    """ vocalises and telegrams a message string """
     time = strftime("%Y-%m-%d %H:%M:%S", gmtime()) 
 
     with open('persisted/log.txt', 'a') as file:
         file.write(f'{time} {string} \n') 
-    
-    # if speech == True:   # Windows only
-    #     engine = pyttsx3.init()
-    #     voices = engine.getProperty('voices')
-    #     engine.setProperty('voice', voices[0].id) 
-    #     engine.say(string)
-    #     engine.runAndWait()
 
     if telegram == True:
         token = os.getenv('TELEGRAM_TOKEN')
         chat_id = os.getenv('CHAT_ID')
         requests.get(f'https://api.telegram.org/bot{token}/sendMessage?chat_id={chat_id}&text={string}').json()
+
+    # if speech == True:
+    #     engine = pyttsx3.init()
+    #     voices = engine.getProperty('voices')
+    #     engine.setProperty('voice', voices[0].id) 
+    #     engine.say(string)
+    #     engine.runAndWait()   # Windows only
     
 
 def get_trade_status(client):
@@ -105,8 +105,8 @@ def get_trade_status(client):
     return status
 
 
-MAX_RISK = 5               # % of capital per position, 'False' = $100
-FRESH_START = True 
+MAX_RISK = 0               # % of capital per position, '0' = $100
+FRESH_START = False        # clears postions and orders on restart
 DELAY = 2                  # >1
 STOP_TYPE = 'MarkPrice'    # or 'LastPrice'
 
@@ -133,23 +133,25 @@ if FRESH_START:
     message('fresh start')
     
 if trade_status != 'none':
+    try:
+        trailing_stop = client.Order.Order_getOrders(filter='{"open": true}').result()[0][0]['stopPx'] 
+        liquidation_price = client.Position.Position_get(filter='{"symbol": "XBTUSD"}').result()[0][0]['liquidationPrice']
+        message('position active')
+    except:
+        clear_book(client)
+        message('position closed')
 
-    with open('persisted/trailing_stop.txt', 'r') as file: 
-        trailing_stop = file.read()    
+levels.calculate(buckets= '1h', data_length=15, graph=False)   # type: ignore
 
-    with open('persisted/liquidation_price.txt', 'r') as file: 
-        liquidation_price = file.read()   
+schedule.every().hour.at('00:03').do(levels.calculate, buckets= '1h', data_length=15, graph=False)   # type: ignore 
 
-levels.calculate(buckets= '5m', data_length=15, graph=False)   # type: ignore
-
-schedule.every(5).minutes.do(levels.calculate, buckets= '5m', data_length=15, graph=False)   # type: ignore 
-# schedule.every().hour.at('00:03').do(levels.calculate, buckets= '1h', data_length=20, graph=False)   # type: ignore 
-# schedule.every().day.at("00:00:03", "UTC").do(levels.calculate, buckets= '1h', data_length=20*4, resampled_buckets='4h')   
-# schedule.every().day.at("04:00:03", "UTC").do(levels.calculate, buckets= '1h', data_length=20*4, resampled_buckets='4h')
-# schedule.every().day.at("08:00:03", "UTC").do(levels.calculate, buckets= '1h', data_length=20*4, resampled_buckets='4h')
-# schedule.every().day.at("12:00:03", "UTC").do(levels.calculate, buckets= '1h', data_length=20*4, resampled_buckets='4h')
-# schedule.every().day.at("16:00:03", "UTC").do(levels.calculate, buckets= '1h', data_length=20*4, resampled_buckets='4h')
-# schedule.every().day.at("20:00:03", "UTC").do(levels.calculate, buckets= '1h', data_length=20*4, resampled_buckets='4h')
+# schedule.every(5).minutes.do(levels.calculate, buckets= '5m', data_length=15, graph=False)   # type: ignore 
+# schedule.every().day.at("00:00:03", "UTC").do(levels.calculate, buckets= '1h', data_length=15*4, resampled_buckets='4h')   
+# schedule.every().day.at("04:00:03", "UTC").do(levels.calculate, buckets= '1h', data_length=15*4, resampled_buckets='4h')
+# schedule.every().day.at("08:00:03", "UTC").do(levels.calculate, buckets= '1h', data_length=15*4, resampled_buckets='4h')
+# schedule.every().day.at("12:00:03", "UTC").do(levels.calculate, buckets= '1h', data_length=15*4, resampled_buckets='4h')
+# schedule.every().day.at("16:00:03", "UTC").do(levels.calculate, buckets= '1h', data_length=15*4, resampled_buckets='4h')
+# schedule.every().day.at("20:00:03", "UTC").do(levels.calculate, buckets= '1h', data_length=15*4, resampled_buckets='4h')
 # (check EC2 time sync method)
 
 while True:
@@ -181,15 +183,12 @@ while True:
         time.sleep(3)
         liquidation_price = client.Position.Position_get(filter='{"symbol": "XBTUSD"}').result()[0][0]['liquidationPrice']
         trailing_stop = max(levels.lower_bound, float(liquidation_price) * 1.1) 
-        print('LB = ', int(levels.lower_bound))
-        print('LIQP = ', int(liquidation_price))  
-        print('STOPPX = ', int(trailing_stop))
         client.Order.Order_new(symbol='XBTUSD', 
                                ordType='Stop', 
                                orderQty=-size, 
-                               stopPx=int(trailing_stop), 
+                               stopPx=int(trailing_stop),      # 'message': 'Invalid stopPx tickSize'
                                execInst=STOP_TYPE,    
-                               clOrdID='long_stop').result()
+                               clOrdID='long_stop').result()  
         message(f'long stop set {int(trailing_stop)}')
         
 
@@ -246,15 +245,3 @@ while True:
 
         if levels.upper_bound > liquidation_price / 1.1:
             message('reduce max risk')
-
-
-    if trade_status != 'none':
-
-        with open('persisted/trailing_stop.txt', 'w') as file:    # container needs volume mount
-            # write to volume in case container restarts
-            file.write(str(trailing_stop))    
-
-        with open('persisted/liquidation_price.txt', 'w') as file:
-            # write to volume in case container restarts
-            file.write(str(liquidation_price))  
-
