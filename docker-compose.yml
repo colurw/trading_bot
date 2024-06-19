@@ -4,33 +4,28 @@
 services:
   
   bitmex_streamer:
+    container_name: bitmex_streamer
     build:
       context: .
       dockerfile: bitmex_streamer/Dockerfile
-    # expose:
-    #   - 4444:4444
-    networks:
-      - my_net
+    env_file: .env
+    expose:
+      - 4444:4444
     restart: always
 
   trading_algorithm:
+    container_name: trading_algorithm
     build:
       context: .
       dockerfile: trading_algorithm/Dockerfile
-    # ports:
-    #   - 80:80
+    network_mode: container:bitmex_streamer
+    env_file: .env 
     depends_on:
       - bitmex_streamer
-    networks:
-      - my_net
     volumes:
-      - persisted_data:services/persisted
+      - persisted_data:/services/persisted
     restart: always
  
-networks:
-  my_net:
-    driver: bridge
-
 volumes:
   persisted_data:
 

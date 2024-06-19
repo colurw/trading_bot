@@ -4,14 +4,13 @@ import time
 import bitmex
 import os
 import sys
-import pyttsx3
+# import pyttsx3 
 from dotenv import load_dotenv 
 from time import localtime, gmtime, strftime
-exec( open('trading_algorithm/indicator_private.py').read() ) 
+exec( open('indicator_private.py').read() )   # avoids circular import
 
 
 class TestConnection():
-
     def __init__(self):
         self.timestamp = 'none'
         self.last_timestamp = 'none'
@@ -19,11 +18,10 @@ class TestConnection():
 
     def test(self, timestamp):
         """ checks websocket stream is updating and records error if not """
-
         if self.timestamp == self.last_timestamp:
             self.glitch_count += 1
             
-            if self.glitch_count > 2:
+            if self.glitch_count > 3:
                 message('stream interrupted')
         else:
             self.glitch_count = 0  
@@ -43,26 +41,23 @@ def get_streamed_data():
 
     except:
         message('streamer failed')
-        # sys.exit('streamer failed') 
+        sys.exit('streamer failed') 
     
 
 def calculate_order_size(margin, max_risk, price, stop_level):
     """ adjust position sizes according to risk tolerance and stop distance """
-
     risk_tolerance = max_risk / 100
     stop_fraction = abs(price - stop_level) / price
-    capital = margin * price / 100000000
+    capital = margin * price / 100000000   
     order_size = capital * risk_tolerance / stop_fraction
-    rounded = round(order_size / 100) * 100
+    rounded = round(order_size / 100) * 100 
+    leverage = max(rounded, 100) / capital
 
-    message(f'risk settings  stop_frac:{stop_fraction} usd:{capital} mar:{margin/100000000}')
+    message(f'risk level - stop_frac:{stop_fraction} usd:{capital} mar:{margin/100000000} lev:{leverage}')
 
-    if max_risk != 0:
-        return max(rounded, 100)
-    
-    return 100
+    return max(rounded, 100)
+
         
-
 def clear_book(client):
     """ clears open positions and stops """
     try:
@@ -76,21 +71,24 @@ def clear_book(client):
         print('no open stops')
 
 
-def message(string, speech=True, telegram=True):
+def message(string, speech=False, telegram=True):
     """ logs and vocalises messages  """
-    time = strftime("%Y-%m-%d %H:%M:%S", localtime())  # also gmtime()
+    time = strftime("%Y-%m-%d %H:%M:%S", gmtime()) 
 
-    with open('trading_algorithm/persisted/log.txt', 'a') as file:
+    with open('persisted/log.txt', 'a') as file:
         file.write(f'{time} {string} \n') 
     
-    if speech == True:
-        engine = pyttsx3.init()
-        voices = engine.getProperty('voices')
-        engine.setProperty('voice', voices[0].id) 
-        engine.say(string)
-        engine.runAndWait()
+    # if speech == True:   # Windows only
+    #     engine = pyttsx3.init()
+    #     voices = engine.getProperty('voices')
+    #     engine.setProperty('voice', voices[0].id) 
+    #     engine.say(string)
+    #     engine.runAndWait()
 
-    if tele
+    if telegram == True:
+        token = os.getenv('TELEGRAM_TOKEN')
+        chat_id = os.getenv('CHAT_ID')
+        requests.get(f'https://api.telegram.org/bot{token}/sendMessage?chat_id={chat_id}&text={string}').json()
     
 
 def get_trade_status(client):
@@ -107,12 +105,13 @@ def get_trade_status(client):
     return status
 
 
-MAX_RISK = 5              # % of capital per position
-FRESH_START = True       
-DELAY = 2                 # >1
-STOP_TYPE = 'MarkPrice'   # or 'LastPrice'
+MAX_RISK = 5               # % of capital per position, 'False' = $100
+FRESH_START = True 
+DELAY = 2                  # >1
+STOP_TYPE = 'MarkPrice'    # or 'LastPrice'
 
-load_dotenv()   # get env vars from .env file
+load_dotenv()  
+
 message('start up')
 
 # create instance of trading indicator
@@ -135,43 +134,35 @@ if FRESH_START:
     
 if trade_status != 'none':
 
-    with open('trading_algorithm/persisted/trailing_stop.txt', 'r') as file: 
+    with open('persisted/trailing_stop.txt', 'r') as file: 
         trailing_stop = file.read()    
 
-    with open('trading_algorithm/persisted/liquidation_price.txt', 'r') as file: 
+    with open('persisted/liquidation_price.txt', 'r') as file: 
         liquidation_price = file.read()   
 
-levels.calculate(graph=True)   # type: ignore
+levels.calculate(buckets= '5m', data_length=15, graph=False)   # type: ignore
 
-schedule.every().hour.at(':00').do(levels.calculate, buckets= '1hr', data_length=20, graph=True)   # type: ignore 
-
-# schedule.every().day.at("00:00:00", "UTC").do(levels.calculate, buckets= '1hr', data_length=20*4, resampled_buckets='4h')
-# schedule.every().day.at("04:00:00", "UTC").do()
-# schedule.every().day.at("08:00:00", "UTC").do()
-# schedule.every().day.at("12:00:00", "UTC").do()
-# schedule.every().day.at("16:00:00", "UTC").do()
-# schedule.every().day.at("20:00:00", "UTC").do()
+schedule.every(5).minutes.do(levels.calculate, buckets= '5m', data_length=15, graph=False)   # type: ignore 
+# schedule.every().hour.at('00:03').do(levels.calculate, buckets= '1h', data_length=20, graph=False)   # type: ignore 
+# schedule.every().day.at("00:00:03", "UTC").do(levels.calculate, buckets= '1h', data_length=20*4, resampled_buckets='4h')   
+# schedule.every().day.at("04:00:03", "UTC").do(levels.calculate, buckets= '1h', data_length=20*4, resampled_buckets='4h')
+# schedule.every().day.at("08:00:03", "UTC").do(levels.calculate, buckets= '1h', data_length=20*4, resampled_buckets='4h')
+# schedule.every().day.at("12:00:03", "UTC").do(levels.calculate, buckets= '1h', data_length=20*4, resampled_buckets='4h')
+# schedule.every().day.at("16:00:03", "UTC").do(levels.calculate, buckets= '1h', data_length=20*4, resampled_buckets='4h')
+# schedule.every().day.at("20:00:03", "UTC").do(levels.calculate, buckets= '1h', data_length=20*4, resampled_buckets='4h')
+# (check EC2 time sync method)
 
 while True:
 
-    # recalculate levels every every new candle - check EC2 time sync method
-    schedule.run_pending()   
+    schedule.run_pending()   # recalculate trigger levels every every new candle 
     time.sleep(DELAY)
 
     trade_status = get_trade_status(client)  
 
-    # get current prices every second
-    last_price, timestamp = get_streamed_data()  
+    last_price, timestamp = get_streamed_data()   # get current price every {DELAY} sceonds
     
-    # os.system('cls')
-    print('UB = ', int(levels.upper_bound))
-    print('LT = ', int(levels.long_trigger)) 
-    print('LP = ', int(last_price)) 
-    print('ST = ', int(levels.short_trigger))
-    print('LB = ', int(levels.lower_bound))
-    print()
-       
     is_connected.test(timestamp)
+
 
     if last_price > levels.long_trigger and trade_status == 'none':
 
@@ -259,11 +250,11 @@ while True:
 
     if trade_status != 'none':
 
-        with open('trading_algorithm/persisted/trailing_stop.txt', 'w') as file:    # container needs volume mount
+        with open('persisted/trailing_stop.txt', 'w') as file:    # container needs volume mount
             # write to volume in case container restarts
             file.write(str(trailing_stop))    
 
-        with open('trading_algorithm/persisted/liquidation_price.txt', 'w') as file:
+        with open('persisted/liquidation_price.txt', 'w') as file:
             # write to volume in case container restarts
             file.write(str(liquidation_price))  
 

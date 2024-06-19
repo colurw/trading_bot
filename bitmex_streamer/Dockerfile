@@ -6,7 +6,7 @@ RUN mkdir -p /code
 WORKDIR /code
 
 # copy project code
-COPY . /code
+COPY /bitmex_streamer /code
 
 # install dependencies
 RUN npm install npm@latest -g

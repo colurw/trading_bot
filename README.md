@@ -1,24 +1,18 @@
 # trading_bot
 
-A work in progress...
+A work in progress...  use `docker compose up` to run
 
 ### bitmex_streamer/
 
-A containerised Node.js app for connecting to BitMEX's realtime API.  Allows for frequent updates without being ratelimited.
+A containerised Node.js app for connecting to BitMEX's realtime API.  Allows for frequent requests without being rate-limited.
 
 Built from https://github.com/BitMEX/api-connectors/tree/master/official-ws/delta-server
 
-`docker build --tag 'bitmex_streamer' .`
+### indicator_public.py
 
-`docker run -p 127.0.0.1:4444:4444 bitmex_streamer`
-
-`curl "http://localhost:4444/instrument?symbol=XBTUSD"`
-
-### calculate_levels_public.py
-
-Downloads historic price data and calculates significant price levels.  Redacted version.
+Downloads recent historic price data and calculates the boundaries that will trigger trade entries and exits.  Redacted version.
 
 ### make_trades.py
 
-An automated long & short trading strategy based on significant levels and trailing stops.
+Watches the realtime price and enacts a risk-adjusted trading strategy by making API calls to the market.
 

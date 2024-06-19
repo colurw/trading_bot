@@ -5,21 +5,21 @@ FROM python:3.10-slim
 RUN apt-get update && apt-get upgrade -y 
 
 # create working directory
-RUN mkdir -p /services
-WORKDIR /services
+RUN mkdir -p /code
+WORKDIR /code
 
 # install dependencies
-COPY requirements.txt /services/
+COPY requirements.txt /code/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # copy project code
-COPY . /services
+COPY /trading_algorithm /code
 
 # # change to non-root user 'app'
 # RUN mkdir -p /home/app
 # RUN addgroup --system app && adduser --system --group app
-# RUN chown -R app:app /services
+# RUN chown -R app:app /code
 # USER app
 
-# default commands to run when starting the container - start gunicorn server
-CMD ["python", "make_trades.py", ]
+# default commands to run when starting the container
+CMD ["python", "make_trades.py"]

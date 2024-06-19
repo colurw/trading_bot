@@ -6,7 +6,6 @@ import sys
 
 
 class Indicator():
-    
     def __init__(self):
         self.long_trigger = 0.0
         self.short_trigger = 0.0
@@ -22,7 +21,6 @@ class Indicator():
 
     def atr(self, df, atr_length):
         """ average true range (for columns with latest values at bottom) """
-
         df_high, df_low, df_prev_close = df['high'], df['low'], df['close'].shift()
         df_tr = [df_high- df_low, df_high - df_prev_close, df_low - df_prev_close]
         df_tr = [tr.abs() for tr in df_tr]
@@ -34,24 +32,17 @@ class Indicator():
 
     def get_historic_data(self, data_length, buckets='1h', resampled_buckets=False):
         """ get 1hr bucketed historic OHLC prices from API and return as a dataframe """
-<<<<<<< HEAD
-
         attempts = 0
         while True:
-            
-=======
-        
-        for attempts in range(1,3):
->>>>>>> 8f346e2fecedf7798bc42c85a1a024d49c166181
             try:
                 response = requests.get(f'https://www.bitmex.com/api/v1/trade/bucketed?binSize={buckets}&partial=false&symbol=XBTUSD&count={data_length}&reverse=true').json()
-                print('history received')
                 break
 
             except:
                 time.sleep(5)
                 if attempts == 3:
-                    sys.exit('get_historic_data failed')
+                    message('get_historic_data failed')   # type: ignore  
+                    sys.exit()
 
         df = pd.DataFrame.from_dict(response)
         df = df.iloc[::-1]  # reverse dataframe
@@ -78,9 +69,14 @@ class Indicator():
         return df
 
 
-    def calculate(self, data_length=20, candles='1h', atr_length=14, atr_multiplier=3, graph=True):
-     
-        time.sleep(1)
+    def useful_stuff():
+        ...
+
+        return ...
+
+
+    def calculate(self, data_length=20, candles='1h', atr_length=14, atr_multiplier=3, graph=False):
+        """ generates the price levels that trigger buy/sell/exit api calls if crossed """
         df = self.get_historic_data(data_length, candles)
 
         # reverse dataframe
