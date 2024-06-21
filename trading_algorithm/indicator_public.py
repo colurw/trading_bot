@@ -75,7 +75,7 @@ class Indicator():
         return ...
 
 
-    def calculate(self, data_length=20, candles='1h', atr_length=14, atr_multiplier=3, graph=False):
+    def calculate(self, data_length=20, candles='1h', atr_length=14, atr_multiplier=3, useful_variable=14, graph=False):
         """ generates the price levels that trigger buy/sell/exit api calls if crossed """
         df = self.get_historic_data(data_length, candles)
 

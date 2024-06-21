@@ -17,12 +17,16 @@ class TestConnection():
         self.glitch_count = 0
 
     def test(self, timestamp):
-        """ checks websocket stream is updating and records error if not """
+        """ compares websocket stream's timestamp against previous to check stream is updating"""
         if self.timestamp == self.last_timestamp:
             self.glitch_count += 1
             
-            if self.glitch_count > 3:
+            if self.glitch_count > 2:
                 message('stream interrupted')
+
+            if self.glitch_count > 10:
+                message('stream stopped')
+                sys.exit()          
         else:
             self.glitch_count = 0  
         
@@ -41,17 +45,17 @@ def get_streamed_data():
 
     except:
         message('streamer failed')
-        sys.exit('streamer failed') 
+        sys.exit() 
     
 
 def calculate_order_size(margin, max_risk, price, stop_level):
     """ adjust position sizes according to risk tolerance and stop distance """
     risk_tolerance = max_risk / 100
     stop_fraction = abs(price - stop_level) / price
-    capital = margin * price / 100000000   
-    order_size = capital * risk_tolerance / stop_fraction
+    equity = margin * price / 100000000   
+    order_size = equity * risk_tolerance / stop_fraction
     rounded = round(order_size / 100) * 100 
-    leverage = max(rounded, 100) / capital
+    leverage = max(rounded, 100) / equity
 
     message(f'stop_fraction:{round(stop_fraction, 3)} leverage:{round(leverage, 3)}')
 
@@ -73,15 +77,16 @@ def clear_book(client):
 
 def message(string, telegram=True, speech=False):
     """ vocalises and telegrams a message string """
-    time = strftime("%Y-%m-%d %H:%M:%S", gmtime()) 
-
+ 
     with open('persisted/log.txt', 'a') as file:
+        time = strftime('%Y-%m-%d %H:%M:%S', gmtime())
         file.write(f'{time} {string} \n') 
 
     if telegram == True:
+        message = f'{strftime("%H:%M:%S", gmtime())} {string}'
         token = os.getenv('TELEGRAM_TOKEN')
         chat_id = os.getenv('CHAT_ID')
-        requests.get(f'https://api.telegram.org/bot{token}/sendMessage?chat_id={chat_id}&text={string}').json()
+        requests.get(f'https://api.telegram.org/bot{token}/sendMessage?chat_id={chat_id}&text={message}').json()
 
     # if speech == True:
     #     engine = pyttsx3.init()
@@ -108,7 +113,7 @@ def get_trade_status(client):
 MAX_RISK = 0               # % of capital per position, '0' = $100
 FRESH_START = False        # clears postions and orders on restart
 DELAY = 2                  # >1
-STOP_TYPE = 'MarkPrice'    # or 'LastPrice'
+STOP_TYPE = 'LastPrice'    # or 'MarkPrice'
 
 load_dotenv()  
 
@@ -125,7 +130,8 @@ client = bitmex.bitmex(test=True,
 # create instance of websocket stream tester
 is_connected = TestConnection()
 
-trade_status = get_trade_status(client)  
+trade_status = get_trade_status(client)
+previous_trade_status = ''  
 
 if FRESH_START:
     trade_status == 'none'
@@ -141,7 +147,7 @@ if trade_status != 'none':
         clear_book(client)
         message('position closed')
 
-levels.calculate(buckets= '1h', data_length=15, graph=False)   # type: ignore
+levels.calculate(buckets='1h', data_length=15, graph=False)   # type: ignore
 
 schedule.every().hour.at('00:03').do(levels.calculate, buckets= '1h', data_length=15, graph=False)   # type: ignore 
 
@@ -156,12 +162,17 @@ schedule.every().hour.at('00:03').do(levels.calculate, buckets= '1h', data_lengt
 
 while True:
 
-    schedule.run_pending()   # recalculate trigger levels every every new candle 
-    time.sleep(DELAY)
-
     trade_status = get_trade_status(client)  
 
-    last_price, timestamp = get_streamed_data()   # get current price every {DELAY} sceonds
+    if trade_status == 'none' and (previous_trade_status == 'in_long' or previous_trade_status == 'in_short'):
+        message('position closed')
+
+    schedule.run_pending()   # recalculate trigger levels after each new bucket
+    time.sleep(DELAY)
+
+    previous_trade_status = trade_status
+
+    last_price, timestamp = get_streamed_data()   # get current price
     
     is_connected.test(timestamp)
 
@@ -170,14 +181,14 @@ while True:
 
         # open long position
         clear_book(client)
-        margin = client.User.User_getMargin(currency='XBt').result()[0]['amount']    # must set account to cross margin
-        size = calculate_order_size(margin, MAX_RISK, last_price, levels.lower_bound)
+        margin = client.User.User_getMargin(currency='XBt').result()[0]['amount']    
+        size = calculate_order_size(margin, MAX_RISK, last_price, levels.lower_bound)    # must set account to cross margin
         client.Order.Order_new(symbol='XBTUSD', 
                                ordType='Market', 
                                side='Buy', 
                                orderQty=size).result()
         trade_status = 'in_long'
-        message(f'long trade opened {last_price} {size}')
+        message(f'long trade opened {last_price} qty:{size}')
 
         # set long stop
         time.sleep(3)
@@ -186,7 +197,7 @@ while True:
         client.Order.Order_new(symbol='XBTUSD', 
                                ordType='Stop', 
                                orderQty=-size, 
-                               stopPx=int(trailing_stop),      # 'message': 'Invalid stopPx tickSize'
+                               stopPx=int(trailing_stop),  
                                execInst=STOP_TYPE,    
                                clOrdID='long_stop').result()  
         message(f'long stop set {int(trailing_stop)}')
@@ -201,23 +212,20 @@ while True:
         client.Order.Order_new(symbol='XBTUSD', 
                                ordType='Market', 
                                side='Sell', 
-                               orderQty=-size).result()  
+                               orderQty=-size).result()
         trade_status = 'in_short'
-        message(f'short trade opened {last_price} {size}')
+        message(f'short trade opened {last_price} qty:{size}')
 
         # set short stop
         time.sleep(3)
         liquidation_price = client.Position.Position_get(filter='{"symbol": "XBTUSD"}').result()[0][0]['liquidationPrice']
         trailing_stop = min(levels.upper_bound, float(liquidation_price) / 1.1) 
-        print('UB = ', int(levels.upper_bound))
-        print('LIQP = ', int(liquidation_price))  
-        print('STOPPX = ', int(trailing_stop))
         client.Order.Order_new(symbol='XBTUSD', 
                                ordType='Stop', 
                                orderQty=size, 
                                stopPx=int(trailing_stop), 
                                execInst=STOP_TYPE,    
-                               clOrdID='short_stop').result() 
+                               clOrdID='short_stop').result()
         message(f'short stop set {int(trailing_stop)}')
 
 
