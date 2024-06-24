@@ -1,6 +1,6 @@
 # trading_bot
 
-A work in progress...  use `docker compose up` to run
+Use `docker compose up` to run
 
 ### bitmex_streamer/
 
